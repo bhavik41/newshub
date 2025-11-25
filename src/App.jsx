@@ -4,8 +4,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
 import AllNews from "./components/AllNews";
 import Navbar from './components/Navbar';
-import Bhavik from "./components/bhavik";
-
 
 function App() {
   return (
@@ -20,7 +18,6 @@ function App() {
           <Route path="/world" element={<AllNews />} />
           <Route path="/politics" element={<AllNews />} />
           <Route path="/tech" element={<AllNews />} />
-          <Route path="/bhavik" element={<Bhavik />} />
 
         </Routes>
       </main>

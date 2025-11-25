@@ -1,25 +1,28 @@
-import React, { useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useEffect, useCallback, useRef, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "react-router-dom";
-import {ArrowLeft, Newspaper, Search, Filter, Loader, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Newspaper, Search, Filter, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   fetchAllNews,
   setSearchQuery,
   setSelectedSection,
+  fetchSuggestions,
+  clearSuggestions,
 } from "../features/news/allNewsSlice";
 import { hasValidImage } from "../utils/imageHelpers";
 import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";    
 
 export default function AllNews() {
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
-  const { items, loading, error, hasMore, searchQuery, selectedSection, page } =
+  const { items, loading, error, hasMore, searchQuery, selectedSection, page, suggestions, showSuggestions } =
     useSelector((state) => state.allNews);
 
   const observerTarget = useRef(null);
   const isLoadingRef = useRef(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const searchInputRef = useRef(null);
 
   const SECTION_MAP = useMemo(
     () => ({
@@ -35,7 +38,6 @@ export default function AllNews() {
     []
   );
 
-  // Update section when route changes
   useEffect(() => {
     const path = location.pathname.substring(1);
     const mapped = SECTION_MAP[path] || "all";
@@ -44,7 +46,6 @@ export default function AllNews() {
     }
   }, [location.pathname, SECTION_MAP, selectedSection, dispatch]);
 
-  // Fetch on search or section change (resets to page 1)
   useEffect(() => {
     isLoadingRef.current = true;
     dispatch(
@@ -57,16 +58,13 @@ export default function AllNews() {
     );
   }, [dispatch, searchQuery, selectedSection]);
 
-  // Update loading ref when loading state changes
   useEffect(() => {
     isLoadingRef.current = loading;
   }, [loading]);
 
-  // Infinite scroll observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        // Only load more if: 1) entry is visible, 2) more items available, 3) not currently loading
         if (entries[0].isIntersecting && hasMore && !isLoadingRef.current) {
           isLoadingRef.current = true;
           dispatch(
@@ -93,12 +91,75 @@ export default function AllNews() {
     };
   }, [dispatch, hasMore, page, searchQuery, selectedSection]);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target)) {
+        dispatch(clearSuggestions());
+        setSelectedSuggestionIndex(-1);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dispatch]);
+
   const handleSearchChange = useCallback(
     (e) => {
-      const value = e.target.value;
-      dispatch(setSearchQuery(value));
+      const text = e.target.value;
+      dispatch(setSearchQuery(text));
+      setSelectedSuggestionIndex(-1);
+
+      if (text.trim() === "") {
+        dispatch(clearSuggestions());
+      } else {
+        dispatch(fetchSuggestions(text));
+      }
     },
     [dispatch]
+  );
+
+  const handleSuggestionClick = useCallback(
+    (suggestion) => {
+      dispatch(setSearchQuery(suggestion));
+      dispatch(clearSuggestions());
+      setSelectedSuggestionIndex(-1);
+    },
+    [dispatch]
+  );
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (!showSuggestions || suggestions.length === 0) return;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setSelectedSuggestionIndex((prev) =>
+            prev < suggestions.length - 1 ? prev + 1 : 0
+          );
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setSelectedSuggestionIndex((prev) =>
+            prev > 0 ? prev - 1 : suggestions.length - 1
+          );
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (selectedSuggestionIndex >= 0) {
+            handleSuggestionClick(suggestions[selectedSuggestionIndex]);
+          }
+          break;
+        case "Escape":
+          e.preventDefault();
+          dispatch(clearSuggestions());
+          setSelectedSuggestionIndex(-1);
+          break;
+        default:
+          break;
+      }
+    },
+    [showSuggestions, suggestions, selectedSuggestionIndex, handleSuggestionClick, dispatch]
   );
 
   const handleCategoryChange = useCallback(
@@ -157,16 +218,36 @@ export default function AllNews() {
 
         {/* Search and Filter Bar */}
         <div className="mb-8 flex flex-col md:flex-row gap-4">
-          {/* Search Input */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+          {/* Search Input with Autocomplete */}
+          <div className="flex-1 relative" ref={searchInputRef}>
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
             <input
               type="text"
               placeholder="Search news..."
               value={searchQuery}
               onChange={handleSearchChange}
+              onKeyDown={handleKeyDown}
               className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+
+            {/* Autocomplete Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <ul className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-slate-800 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-lg shadow-lg overflow-y-auto">
+                {suggestions.slice(0, 4).map((suggestion, index) => (
+                  <li
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 last:border-b-0 ${selectedSuggestionIndex === index
+                      ? "bg-blue-100 dark:bg-blue-900/40"
+                      : "hover:bg-slate-100 dark:hover:bg-slate-700"
+                      }`}
+                  >
+                    <Search className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-900 dark:text-slate-100">{suggestion}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Category Filter */}
@@ -201,6 +282,7 @@ export default function AllNews() {
             Back
           </button>
         </div>
+
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
             <p className="text-red-600 dark:text-red-400">{error}</p>
