@@ -1,4 +1,5 @@
-import React from 'react'
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 function Navbar() {
   return (
@@ -22,10 +23,11 @@ function Navbar() {
             </div>
             <h1 className="text-xl font-display font-bold">NewsToday</h1>
             <nav className="hidden md:flex items-center gap-6 ml-6 text-sm">
-              <a className="hover:text-primary">Home</a>
-              <a className="hover:text-primary">World</a>
-              <a className="hover:text-primary">Politics</a>
-              <a className="hover:text-primary">Tech</a>
+              <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+              <Link to="/news" className="hover:text-primary transition-colors">All News</Link>
+              <Link to="/world" className="hover:text-primary transition-colors">World</Link>
+              <Link to="/politics" className="hover:text-primary transition-colors">Politics</Link>
+              <Link to="/tech" className="hover:text-primary transition-colors">Tech</Link>
             </nav>
           </div>
 

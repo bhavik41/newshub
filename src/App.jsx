@@ -1,31 +1,31 @@
 
 import "./App.css";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
+import AllNews from "./components/AllNews";
 import Navbar from './components/Navbar';
+import Bhavik from "./components/bhavik";
 
 
 function App() {
   return (
     <BrowserRouter>
-
-        {/* <nav className="flex gap-4">
-          <Link to="/" className="text-blue-500">Home</Link>
-
-        </nav> */}
-<Navbar/>
-
+      <Navbar/>
 
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          {/* <Route path="/articles" element={<Articles />} />
-          <Route path="/about" element={<About />} />
-          <Route path="*" element={<NotFound />} /> */}
+          <Route path="/all" element={<AllNews />} />
+          <Route path="/news" element={<AllNews />} />
+          <Route path="/world" element={<AllNews />} />
+          <Route path="/politics" element={<AllNews />} />
+          <Route path="/tech" element={<AllNews />} />
+          <Route path="/bhavik" element={<Bhavik />} />
+
         </Routes>
       </main>
     </BrowserRouter>
   );
 }
 export default App;
-// ...existing code...
+
