@@ -1,13 +1,13 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-// ⭐ NEW — AutoComplete API call
+// ⭐ Get suggestions (called on every keystroke - NO frequency increment)
 export const fetchSuggestions = createAsyncThunk(
   "allNews/fetchSuggestions",
   async (prefix, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        "http://localhost:8080/api/autocomplete/suggest",
+        "http://localhost:8080/api/search-suggest",
         prefix,
         { headers: { "Content-Type": "text/plain" } }
       );
@@ -19,7 +19,25 @@ export const fetchSuggestions = createAsyncThunk(
   }
 );
 
-// ⭐ UPDATED — fetch news with Top Stories support
+// ⭐ NEW - Increment search frequency (called ONLY when user actually searches)
+export const incrementSearchFrequency = createAsyncThunk(
+  "allNews/incrementSearchFrequency",
+  async (term, { rejectWithValue }) => {
+    try {
+      await axios.post(
+        "http://localhost:8080/api/search-increment",
+        term,
+        { headers: { "Content-Type": "text/plain" } }
+      );
+      return term;
+    } catch (error) {
+      console.error("Increment Error:", error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// ⭐ Fetch news
 export const fetchAllNews = createAsyncThunk(
   "allNews/fetchAllNews",
   async (
@@ -29,7 +47,6 @@ export const fetchAllNews = createAsyncThunk(
     try {
       let url;
       
-      // Use dedicated endpoint for Top Stories to get ranked articles
       if (section === "Top Stories") {
         const params = new URLSearchParams({
           page: page.toString(),
@@ -37,7 +54,6 @@ export const fetchAllNews = createAsyncThunk(
         });
         url = `http://localhost:8080/api/news/top-stories?${params.toString()}`;
       } else {
-        // Regular news endpoint for other sections
         const params = new URLSearchParams({
           page: page.toString(),
           limit: limit.toString(),
@@ -73,8 +89,6 @@ const allNewsSlice = createSlice({
     error: null,
     searchQuery: "",
     selectedSection: "all",
-
-    // ⭐ AutoComplete states
     suggestions: [],
     showSuggestions: false,
   },
@@ -90,8 +104,6 @@ const allNewsSlice = createSlice({
       state.page = 1;
       state.hasMore = true;
     },
-
-    // ⭐ AutoComplete reducer controls
     clearSuggestions: (state) => {
       state.suggestions = [];
       state.showSuggestions = false;
@@ -100,7 +112,6 @@ const allNewsSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
-      // ⭐ News fetching
       .addCase(fetchAllNews.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -134,8 +145,6 @@ const allNewsSlice = createSlice({
         state.error = action.payload || "Failed to fetch news";
         state.items = [];
       })
-
-      // ⭐ AutoComplete handling
       .addCase(fetchSuggestions.fulfilled, (state, action) => {
         state.suggestions = action.payload || [];
         state.showSuggestions = true;

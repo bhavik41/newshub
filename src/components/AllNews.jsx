@@ -8,6 +8,7 @@ import {
   setSelectedSection,
   fetchSuggestions,
   clearSuggestions,
+  incrementSearchFrequency,
 } from "../features/news/allNewsSlice";
 import { useNavigate } from "react-router-dom";
 
@@ -94,16 +95,27 @@ export default function AllNews() {
 
   const handleSuggestionClick = useCallback(
     (suggestion) => {
-      dispatch(setSearchQuery(suggestion));
+      // Extract term from suggestion object
+      const term = typeof suggestion === 'string' ? suggestion : suggestion.term;
+      dispatch(setSearchQuery(term));
       dispatch(clearSuggestions());
       setSelectedSuggestionIndex(-1);
+
+      // ⭐ Increment frequency when user selects a suggestion
+      dispatch(incrementSearchFrequency(term));
     },
     [dispatch]
   );
 
   const handleKeyDown = useCallback(
     (e) => {
-      if (!showSuggestions || suggestions.length === 0) return;
+      if (!showSuggestions || suggestions.length === 0) {
+        // If no suggestions showing and user presses Enter, increment frequency
+        if (e.key === "Enter" && searchQuery.trim() !== "") {
+          dispatch(incrementSearchFrequency(searchQuery.trim()));
+        }
+        return;
+      }
 
       switch (e.key) {
         case "ArrowDown":
@@ -121,7 +133,12 @@ export default function AllNews() {
         case "Enter":
           e.preventDefault();
           if (selectedSuggestionIndex >= 0) {
-            handleSuggestionClick(suggestions[selectedSuggestionIndex]);
+            const suggestion = suggestions[selectedSuggestionIndex];
+            handleSuggestionClick(suggestion);
+          } else if (searchQuery.trim() !== "") {
+            // User pressed Enter without selecting suggestion - increment current search term
+            dispatch(incrementSearchFrequency(searchQuery.trim()));
+            dispatch(clearSuggestions());
           }
           break;
         case "Escape":
@@ -133,7 +150,7 @@ export default function AllNews() {
           break;
       }
     },
-    [showSuggestions, suggestions, selectedSuggestionIndex, handleSuggestionClick, dispatch]
+    [showSuggestions, suggestions, selectedSuggestionIndex, searchQuery, handleSuggestionClick, dispatch]
   );
 
   const handleCategoryChange = useCallback(
@@ -220,19 +237,33 @@ export default function AllNews() {
             {/* Autocomplete Suggestions Dropdown */}
             {showSuggestions && suggestions.length > 0 && (
               <ul className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-slate-800 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-lg shadow-lg overflow-y-auto max-h-60">
-                {suggestions.slice(0, 4).map((suggestion, index) => (
-                  <li
-                    key={index}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 last:border-b-0 ${selectedSuggestionIndex === index
-                      ? "bg-blue-100 dark:bg-blue-900/40"
-                      : "hover:bg-slate-100 dark:hover:bg-slate-700"
-                      }`}
-                  >
-                    <Search className="w-4 h-4 text-slate-400" />
-                    <span className="text-slate-900 dark:text-slate-100">{suggestion}</span>
-                  </li>
-                ))}
+                {suggestions.slice(0, 4).map((suggestion, index) => {
+                  // Handle both string and object format
+                  const term = typeof suggestion === 'string' ? suggestion : suggestion.term;
+                  const frequency = typeof suggestion === 'object' ? suggestion.frequency : 0;
+
+                  return (
+                    <li
+                      key={index}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 ${selectedSuggestionIndex === index
+                        ? "bg-blue-100 dark:bg-blue-900/40"
+                        : "hover:bg-slate-100 dark:hover:bg-slate-700"
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <span className="text-slate-900 dark:text-slate-100">{term}</span>
+                      </div>
+                      {frequency > 0 && (
+                        <div className="flex items-center gap-1 text-xs bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+                          <span className="font-semibold">{frequency}</span>
+                          <span className="text-blue-600 dark:text-blue-400">searches</span>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
