@@ -7,7 +7,7 @@ export const fetchSuggestions = createAsyncThunk(
   async (prefix, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        "http://localhost:8080/api/search-suggest",
+        "https://news-aggregator-dpvh.onrender.com/api/search-suggest",
         prefix,
         { headers: { "Content-Type": "text/plain" } }
       );
@@ -25,7 +25,7 @@ export const incrementSearchFrequency = createAsyncThunk(
   async (term, { rejectWithValue }) => {
     try {
       await axios.post(
-        "http://localhost:8080/api/search-increment",
+        "https://news-aggregator-dpvh.onrender.com/api/search-increment",
         term,
         { headers: { "Content-Type": "text/plain" } }
       );
@@ -52,7 +52,7 @@ export const fetchAllNews = createAsyncThunk(
           page: page.toString(),
           limit: limit.toString(),
         });
-        url = `http://localhost:8080/api/news/top-stories?${params.toString()}`;
+        url = `https://news-aggregator-dpvh.onrender.com/api/news/top-stories?${params.toString()}`;
       } else {
         const params = new URLSearchParams({
           page: page.toString(),
@@ -63,7 +63,7 @@ export const fetchAllNews = createAsyncThunk(
         if (section && section !== "all" && section.trim() !== "")
           params.append("section", section.trim());
 
-        url = `http://localhost:8080/api/news?${params.toString()}`;
+        url = `https://news-aggregator-dpvh.onrender.com/api/news?${params.toString()}`;
       }
 
       const response = await axios.get(url);

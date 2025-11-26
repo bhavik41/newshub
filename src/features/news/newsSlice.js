@@ -9,7 +9,7 @@ export const fetchNews = createAsyncThunk(
     try {
       console.log("Fetching news...");
 
-      const response = await axios.get('http://localhost:8080/api/home');
+      const response = await axios.get('https://news-aggregator-dpvh.onrender.com/api/home');
       console.log("News fetched successfully");
       console.log(response.data);
       return response.data;
