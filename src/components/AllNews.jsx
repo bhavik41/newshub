@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useRef, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "react-router-dom";
-import { ArrowLeft, Newspaper, Search, Filter, Loader, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Newspaper, Search, Filter, Loader, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
 import {
   fetchAllNews,
   setSearchQuery,
@@ -9,7 +9,6 @@ import {
   fetchSuggestions,
   clearSuggestions,
 } from "../features/news/allNewsSlice";
-import { hasValidImage } from "../utils/imageHelpers";
 import { useNavigate } from "react-router-dom";
 
 export default function AllNews() {
@@ -38,15 +37,19 @@ export default function AllNews() {
     []
   );
 
+  // Only update section from URL path, not from dropdown
   useEffect(() => {
     const path = location.pathname.substring(1);
-    const mapped = SECTION_MAP[path] || "all";
-    if (mapped !== selectedSection) {
-      dispatch(setSelectedSection(mapped));
+    if (path && SECTION_MAP[path]) {
+      const mapped = SECTION_MAP[path];
+      if (mapped !== selectedSection) {
+        dispatch(setSelectedSection(mapped));
+      }
     }
-  }, [location.pathname, SECTION_MAP, selectedSection, dispatch]);
+  }, [location.pathname, SECTION_MAP, dispatch]);
 
   useEffect(() => {
+    console.log("Fetching news with section:", selectedSection);
     isLoadingRef.current = true;
     dispatch(
       fetchAllNews({
@@ -61,35 +64,6 @@ export default function AllNews() {
   useEffect(() => {
     isLoadingRef.current = loading;
   }, [loading]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingRef.current) {
-          isLoadingRef.current = true;
-          dispatch(
-            fetchAllNews({
-              page: page + 1,
-              limit: 30,
-              search: searchQuery,
-              section: selectedSection,
-            })
-          );
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
-
-    return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
-    };
-  }, [dispatch, hasMore, page, searchQuery, selectedSection]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -165,6 +139,7 @@ export default function AllNews() {
   const handleCategoryChange = useCallback(
     (e) => {
       const value = e.target.value;
+      console.log("Category changed to:", value);
       dispatch(setSelectedSection(value));
     },
     [dispatch]
@@ -200,7 +175,8 @@ export default function AllNews() {
     }
   }, [dispatch, page, hasMore, searchQuery, selectedSection]);
 
-  const itemsWithImages = useMemo(() => items.filter(hasValidImage), [items]);
+  // Check if we're on Top Stories section
+  const isTopStoriesSection = selectedSection === "Top Stories";
 
   return (
     <div className="flex flex-col max-w-full w-full min-h-screen bg-slate-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100">
@@ -208,11 +184,22 @@ export default function AllNews() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-            <Newspaper className="w-10 h-10 text-blue-600" />
-            All News
+            {isTopStoriesSection ? (
+              <>
+                <TrendingUp className="w-10 h-10 text-red-600" />
+                Top Stories
+              </>
+            ) : (
+              <>
+                <Newspaper className="w-10 h-10 text-blue-600" />
+                All News
+              </>
+            )}
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
-            Browse all news articles with search and filters
+            {isTopStoriesSection
+              ? "Discover the most relevant and trending news articles ranked by importance"
+              : `Browse ${selectedSection !== "all" ? selectedSection : "all"} news articles with search and filters`}
           </p>
         </div>
 
@@ -232,7 +219,7 @@ export default function AllNews() {
 
             {/* Autocomplete Suggestions Dropdown */}
             {showSuggestions && suggestions.length > 0 && (
-              <ul className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-slate-800 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-lg shadow-lg overflow-y-auto">
+              <ul className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-slate-800 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-lg shadow-lg overflow-y-auto max-h-60">
                 {suggestions.slice(0, 4).map((suggestion, index) => (
                   <li
                     key={index}
@@ -259,11 +246,11 @@ export default function AllNews() {
               className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
             >
               <option value="all">All Sections</option>
-              <option value="Top Stories">Top Stories</option>
+              <option value="Top Stories">🔥 Top Stories (Ranked)</option>
               <option value="MORE TO EXPLORE">MORE TO EXPLORE</option>
               <option value="MOST WATCHED">MOST WATCHED</option>
               <option value="Technology">Technology</option>
-              <option value="politics">politics</option>
+              <option value="politics">Politics</option>
               <option value="TRENDING">TRENDING</option>
               <option value="Sport">Sport</option>
               <option value="Opinion">Opinion</option>
@@ -282,6 +269,30 @@ export default function AllNews() {
             Back
           </button>
         </div>
+
+        {/* Top Stories Badge */}
+        {isTopStoriesSection && !loading && (
+          <div className="mb-6 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-red-600" />
+              <p className="text-red-800 dark:text-red-300 font-medium">
+                Showing ranked articles based on relevance and importance
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Section Info Badge */}
+        {!isTopStoriesSection && selectedSection !== "all" && !loading && items.length > 0 && (
+          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-blue-600" />
+              <p className="text-blue-800 dark:text-blue-300 font-medium">
+                Showing articles from: <strong>{selectedSection}</strong>
+              </p>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
@@ -303,16 +314,40 @@ export default function AllNews() {
         {!loading || page > 1 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {itemsWithImages.map((item, index) => (
+              {items.map((item, index) => (
                 <article
                   key={`${item.title}-${index}`}
                   className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition-shadow"
                 >
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-48 object-cover"
-                  />
+                  {/* Image or Placeholder */}
+                  <div className="relative">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-48 object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = `
+                            <div class="w-full h-48 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
+                              <svg class="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+                              </svg>
+                            </div>
+                          `;
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
+                        <Newspaper className="w-16 h-16 text-slate-400" />
+                      </div>
+                    )}
+                    {isTopStoriesSection && (
+                      <div className="absolute top-2 left-2 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+                        #{(page - 1) * 30 + index + 1}
+                      </div>
+                    )}
+                  </div>
                   <div className="p-4">
                     <div className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-2">
                       {item.section || "News"}
@@ -351,20 +386,22 @@ export default function AllNews() {
             )}
 
             {/* Empty State */}
-            {!loading && itemsWithImages.length === 0 && (
+            {!loading && items.length === 0 && (
               <div className="text-center py-16">
                 <Newspaper className="w-16 h-16 text-slate-400 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
                   No news found
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400">
-                  Try adjusting your search or filter criteria
+                  {selectedSection !== "all"
+                    ? `No articles found in the "${selectedSection}" section. Try selecting a different section.`
+                    : "Try adjusting your search or filter criteria"}
                 </p>
               </div>
             )}
 
             {/* No More Items */}
-            {!loading && !hasMore && itemsWithImages.length > 0 && (
+            {!loading && !hasMore && items.length > 0 && (
               <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                 <p>You've reached the end of the news feed</p>
               </div>
@@ -373,7 +410,7 @@ export default function AllNews() {
         ) : null}
 
         {/* Pagination Controls */}
-        {!loading && itemsWithImages.length > 0 && (
+        {!loading && items.length > 0 && (
           <div className="flex justify-center items-center gap-4 py-8 mb-8">
             <button
               onClick={handlePrevPage}

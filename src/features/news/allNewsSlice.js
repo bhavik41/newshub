@@ -19,7 +19,7 @@ export const fetchSuggestions = createAsyncThunk(
   }
 );
 
-// ⭐ Existing — fetch news
+// ⭐ UPDATED — fetch news with Top Stories support
 export const fetchAllNews = createAsyncThunk(
   "allNews/fetchAllNews",
   async (
@@ -27,16 +27,29 @@ export const fetchAllNews = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-      });
+      let url;
+      
+      // Use dedicated endpoint for Top Stories to get ranked articles
+      if (section === "Top Stories") {
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString(),
+        });
+        url = `http://localhost:8080/api/news/top-stories?${params.toString()}`;
+      } else {
+        // Regular news endpoint for other sections
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString(),
+        });
 
-      if (search && search.trim() !== "") params.append("search", search.trim());
-      if (section && section !== "all" && section.trim() !== "")
-        params.append("section", section.trim());
+        if (search && search.trim() !== "") params.append("search", search.trim());
+        if (section && section !== "all" && section.trim() !== "")
+          params.append("section", section.trim());
 
-      const url = `http://localhost:8080/api/news?${params.toString()}`;
+        url = `http://localhost:8080/api/news?${params.toString()}`;
+      }
+
       const response = await axios.get(url);
 
       return {
@@ -78,7 +91,7 @@ const allNewsSlice = createSlice({
       state.hasMore = true;
     },
 
-    // ⭐ NEW reducer controls
+    // ⭐ AutoComplete reducer controls
     clearSuggestions: (state) => {
       state.suggestions = [];
       state.showSuggestions = false;
