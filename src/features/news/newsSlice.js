@@ -184,7 +184,13 @@ const newsSlice = createSlice({
       })
       .addCase(fetchNews.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Failed to fetch news';
+        // Convert error object to string if needed
+        const errorPayload = action.payload;
+        if (typeof errorPayload === 'object' && errorPayload !== null) {
+          state.error = errorPayload.error || errorPayload.message || JSON.stringify(errorPayload);
+        } else {
+          state.error = errorPayload || 'Failed to fetch news';
+        }
       });
   }
 });
