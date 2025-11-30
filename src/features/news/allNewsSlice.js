@@ -1,11 +1,3 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-
-// ⭐ Get suggestions (called on every keystroke - NO frequency increment)
-export const fetchSuggestions = createAsyncThunk(
-  "allNews/fetchSuggestions",
-  async (prefix, { rejectWithValue }) => {
-    try {
       const response = await axios.post(
         "https://news-aggregator-dpvh.onrender.com/api/search-suggest",
         prefix,
